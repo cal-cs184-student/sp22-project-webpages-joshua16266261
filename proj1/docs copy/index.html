@@ -1,0 +1,196 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>
+  body {
+    padding: 100px;
+    width: 1000px;
+    margin: auto;
+    text-align: left;
+    font-weight: 300;
+    font-family: 'Open Sans', sans-serif;
+    color: #121212;
+  }
+  h1, h2, h3, h4 {
+    font-family: 'Source Sans Pro', sans-serif;
+  }
+</style>
+<title>CS 184 Rasterizer</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+<h1 align="middle">Project 1: Rasterizer</h1>
+<h2 align="middle">Joshua Chen, Marcus Lee, CS184-G00nz</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>In this project, we implemented a rasterizer which could rasterize triangles and transform them and apply texture mapping. We compared different methods of anti-aliasing, such as supersampling, pixel sampling for textures, and level sampling with mipmaps.</p>
+
+<h2 align="middle">Section I: Rasterization</h2>
+
+<h3 align="middle">Part 1: Rasterizing single-color triangles</h3>
+
+<p>First, we computed the line equations from the vertices of the triangle (as given in Lecture 2, slide 47). To check whether the order of the vertices is counter-clockwise, we take 2 vertices of the triangle and check whether the 3rd vertex 
+  is on the positive side of the half-plane given by those 2 vertices. If the vertices are clockwise, then we negate the line equations.</p>
+<p>Our algorithm is no worse than checking every pixel in the bounding box of the triangle because we use cache blocking and parallelization when checking the pixels in the bounding box.</p>
+  
+<p>
+  To get the bounding box of the triangle, we take the max and min of the x and y values and iterate over that region.
+</p>
+
+<div align="middle">
+  <img src="images/task1.png" align="middle" width="400px"/>
+  <figcaption align="middle">test4.svg</figcaption>
+</div>
+
+
+<h3 align="middle">Part 2: Antialiasing triangles</h3>
+<p>To resize the samplebuffer when the sample rate changes, we multiply the size of the framebuffer by the sample rate.</p>
+<p>First we iterate over each pixel that would appear in the framebuffer. Then for each pixel, we split it up into sub-pixels, and for each sub-pixel, if its center is in the triangle, we put the color into the samplebuffer.</p>
+<p>To resolve the samplebuffer to the framebuffer, we take the average of all the elements in the samplebuffer that correspond to each element in the framebuffer.</p>
+<p>To make sure that points and lines render correctly after supersampling, we filled in all the sub-pixels in the samplebuffer that would correspond to the single pixel in the framebuffer.</p>
+<p>Supersampling is useful because it is the same as sampling the image after performing a box blur, which is a low-pass filter. Therefore, when sampling the filtered image, the high frequencies above the Nyquist rate are attenuated, which produces less aliasing.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task2-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Sample rate = 1</figcaption>
+      </td>
+      <td>
+        <img src="images/task2-4.png" align="middle" width="400px"/>
+        <figcaption align="middle">Sample rate = 4</figcaption>
+      </td>
+      <td>
+        <img src="images/task2-16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Sample rate = 16</figcaption>
+      </td>
+    </tr>
+  </table>
+</div>
+
+<p>With a sample rate of 1, the very skinny part of the triangle shows a lot of jaggies and some parts are not even rendered because the triangle is so skinny that it does not pass through the center of the pixel.</p>
+<p>With a sample rate of 4, there are still some jaggies, but because some of the pixels are lighter than others and there are no missing pixels, the jaggies look less pronounced.</p>
+<p>With a sample rate of 16, the jaggies are virtually gone because the sample rate is very high so we can get the most effect out of supersampling.</p>
+
+<h3 align="middle">Part 3: Transforms</h3>
+<div align="middle">
+  <img src="images/task3.png" align="middle" width="400px"/>
+  <figcaption align="middle">my_robot.svg</figcaption>
+</div>
+<p>We made cubeman dab.</p>
+
+
+<h2 align="middle">Section II: Sampling</h2>
+
+<h3 align="middle">Part 4: Barycentric coordinates</h3>
+<p>Barycentric coordinates are a way to linearly interpolate values inside a triangle that don't lie on the vertices. It does this by taking a weighted average of the values associated with each vertex.</p>
+<div align="middle">
+  <img src="images/barycentric_triangle.png" align="middle" width="400px"/>
+  <figcaption align="middle">Using Barycentric coordinates to interpolate between a red, green, and blue vertex</figcaption>
+</div>
+<div align="middle">
+  <img src="images/task4.png" align="middle" width="400px"/>
+  <figcaption align="middle">test7.svg</figcaption>
+</div>
+
+<h3 align="middle">Part 5: "Pixel sampling" for texture mapping</h3>
+<p>In pixel sampling, we take pixels in screen-space and find their corresponding coordinates in texture-space using Barycentric coordinates based on the texture-space coordinates of the vertices of each triangle.</p>
+<p>In nearest-neighbor sampling, we take the coordinates in texture-space and find the nearest texel and output that color to the samplebuffer.</p>
+<p>In bilinear sampling, we take the coordinates in texture-space and find the 4 nearest texels and perform linear interpolation with those texels and output the result to the samplebuffer.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/task5-nearest-1.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest, Sample rate = 1 </figcaption>
+      </td>
+      <td>
+        <img src="images/task5-nearest-16.png" align="middle" width="400px"/>
+        <figcaption align="middle">Nearest, Sample rate = 16 </figcaption>
+    </tr>
+    <br>
+    <tr>
+    </td>
+    <td>
+      <img src="images/task5-bilinear-1.png" align="middle" width="400px"/>
+      <figcaption align="middle">Bilinear, Sample rate = 1 </figcaption>
+    </td>
+    <td>
+      <img src="images/task5-bilinear-16.png" align="middle" width="400px"/>
+      <figcaption align="middle">Bilinear, Sample rate = 16 </figcaption>
+    </td>
+    </tr>
+  </table>
+</div>
+
+<p>Nearest-neighbor sampling with sample rate 1 has a lot of aliasing and gaps in the lines.</p>
+<p>Nearest-neighbor sampling with sample rate 16 has some jaggies but almost no gaps in the lines.</p>
+<p>Bilinear sampling with sample rate 1 is smoother than nearest-neighbor sampling with sample rate 1, but there are more gaps than nearest-neighbor sampling with sample rate 16.</p>
+<p>Bilinear sampling with sample rate 16 is the smoothest with the least gaps and aliasing.</p>
+
+<p>There will be a large difference between the two methods when the rasterized image size and the texture size are very different and the texture has many high-frequency components, such as the lines in the above examples.</p>
+
+<h3 align="middle">Part 6: "Level sampling" with mipmaps for texture mapping</h3>
+
+<p>A mipmap is a data structure which stores recursively downsampled versions of the texture. Level sampling is a way to decide which version of the texture to use for a particular pixel. We implemented level zero mapping, nearest level mapping, and linear mapping.</p>
+
+<p>To implement zero level mapping, we just always use the full-resolution texture by returning the zeroth level.</p>
+
+<p>To implement nearest and linear mapping, we use Barycentric coordinates to get the coordinates of the pixel and its neighbors up and right in texture space. Using these, we calculate the difference between them in texture space to approximate how many texels one screen pixel takes. Based on this, we use the formula in Lecture 5 Slide 66 to get the mipmap level.</p>
+
+<p>For nearest mapping, we simply round the level to the nearest integer.</p>
+
+<p>For linear mapping, we sample using the floor and ceiling of the level and linearly interpolate between the colors based on the level.</p>
+
+<h4 align="left">Tradeoffs</h4>
+
+<h5 align="left">Level Sampling</h5>
+<p>Using only the zeroth level is the fastest and requires the least memory, but results in significant aliasing.</p>
+<p>Using nearest level sampling is slower and requires more memory, but significantly reduces aliasing.</p>
+<p>Using linear level sampling uses the same amount of memory as nearest level sampling, but it is significantly slower, and the improvements on aliasing are only marginally better than with nearest level sampling.</p>
+
+<h5 align="left">Pixel Sampling</h5>
+<p>Both nearest pixel sampling and bilinear sampling are fairly fast, but bilinear sampling significantly reduces aliasing.</p>
+
+<h5 align="left">Number of Samples per Pixel</h5>
+<p>Increasing the number of samples per pixel reduces aliasing, but requires significantly more time and memory.</p>
+
+<div align="middle">
+  <table style="width=100%">
+    <tr>
+      <td>
+        <img src="images/zero-nearest.png" align="middle" width="400px"/>
+        <figcaption align="middle">Zeroth level, nearest pixel</figcaption>
+      </td>
+      <td>
+        <img src="images/zero-linear.png" align="middle" width="400px"/>
+        <figcaption align="middle">Zeroth level, bilinear pixel</figcaption>
+    </tr>
+    <br>
+    <tr>
+    </td>
+    <td>
+      <img src="images/near-near.png" align="middle" width="400px"/>
+      <figcaption align="middle">Nearest level, nearest pixel</figcaption>
+    </td>
+    <td>
+      <img src="images/near-linear.png" align="middle" width="400px"/>
+      <figcaption align="middle">Nearest level, bilinear pixel</figcaption>
+    </td>
+    </tr>
+  </table>
+</div>
+
+</body>
+</html>
