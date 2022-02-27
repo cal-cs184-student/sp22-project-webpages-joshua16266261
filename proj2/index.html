@@ -1,7 +1,315 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+
+<head>
+  <style>
+    body {
+      padding: 100px;
+      width: 1000px;
+      margin: auto;
+      text-align: left;
+      font-weight: 300;
+      font-family: 'Open Sans', sans-serif;
+      color: #121212;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Source Sans Pro', sans-serif;
+    }
+  </style>
+  <title>CS 184 Mesh Editor</title>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+  <h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+  <h1 align="middle">Project 2: Mesh Editor</h1>
+  <h2 align="middle">Joshua Chen, Marcus Lee, CS184-G00nz2</h2>
+
+  <br><br>
+
+  <div>
+
+    <h2 align="middle">Overview</h2>
+    <p>We implemented the de Casteljau algorithm to render Bezier curves and surfaces. We also implemented edge flipping and splitting on triangle meshes represented by the half-edge data structure to implement loop subdivision.</p>
+
+    <h2 align="middle">Section I: Bezier Curves and Surfaces</h2>
+
+    <h3 align="middle">Part 1: Bezier curves with 1D de Casteljau subdivision</h3>
+
+    <p>For t in [0, 1], we take each pair of adjacent contol points and linearly interpolate between the two points by t. Then we repeat this process for the new points until we have 1 point remaining. Doing this for many t values in [0, 1] generates the Bezier curve.</p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/1-1-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 0</figcaption>
+          </td>
+          <td>
+            <img src="images/1-1-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 1</figcaption>
+          </td>
+          <td>
+            <img src="images/1-1-3.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 2</figcaption>
+          </td>
+        </tr>
+        <br>
+        <tr>
+          <td>
+            <img src="images/1-1-4.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 3</figcaption>
+          </td>
+          <td>
+            <img src="images/1-1-5.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 4</figcaption>
+          </td>
+          <td>
+            <img src="images/1-1-6.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Step 5</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/1-1-7.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Final Bezier Curve</figcaption>
+          </td>
+          <td>
+            <img src="images/1-1-8.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Changing one control point, with different t value</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+
+    <h3 align="middle">Part 2: Bezier surfaces with separable 1D de Casteljau subdivision</h3>
+
+    <p>Given an n by n array of control points, we treat each row of the array as a Bezier curve, and we evaluate de Casteljau's algorithm on each row for u in [0, 1]. This gives us n new points, which we treat as another Bezier curve, and we perform de Casteljau's algorithm on these new control points for v in [0, 1]. Doing this for u and v both in [0,1] gives us the Bezier surface.</p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/1-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">teapot.bez</figcaption>
+          </td>
+      </table>
+    </div>
+
+
+    <h2 align="middle">Section II: Sampling</h2>
+
+    <h3 align="middle">Part 3: Average normals for half-edge meshes</h3>
+
+    <p>Starting at the given vertex, we get its halfedge. Then we get that halfedge's next (and its vertex) and it's next's next (and its vertex). This gives us the vertices of the incident triangle. Using these vertices, we construct 2 vectors on the edges of the triangle and take their cross-product to get the normal vector of the triangle. Because the length of the cross-product is already proportional to the area of the triangle, we do not need to do any additional scaling. To get to the next triangle, we get the given vertex's halfedge's next's next's twin, and then repeat the algorithm, until we return back to the given vertex's halfedge.</p>
+    <p>We add the cross-products together and divide by the result's norm to get the final result.</p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-3-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Shading without vertex normals</figcaption>
+          </td>
+          <td>
+            <img src="images/2-3-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Shading with vertex normals</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <h3 align="middle">Part 4: Half-edge flip</h3>
+
+    <p>First, we draw a picture of 2 conjoined triangles and labeled the vertices a, b, c, and d. Then we traversed the halfedges of both triangles, and labeled each halfedge by its starting and ending vertex in our picture. Then we reassigned the pointers of all the halfedges, as well as the faces of the halfedges on the flipped edge.</p>
+    <p>By symmetry, we do not have to check for orientation or anything like that, so we can assume that the mesh locally looks like our picture.</p>
+
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-4-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Teapot before edge flips</figcaption>
+          </td>
+          <td>
+            <img src="images/2-4-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Teapot after edge flips</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <h3 align="middle">Part 5: Half-edge split</h3>
+
+    <p>If the given edge is not a boundary edge, then to figure out how to split, we drew a picture of 2 conjoined triangles and labeled the vertices a, b, c, and d. Then we traversed the halfedges of both triangles, and labeled each halfedge by its starting and ending vertex in our picture. We also drew a picture of the new mesh after the split and figured out what new elements we needed to create. Then we went through all the elements and assigned the pointers as they appeared in our drawing.</p>
+
+    <p>If the given edge is a boundary edge, then our process was the same as if it were not a boundary edge, but our reference picture only had 1 triangle.</p>
+
+    <p>Just like with edge flipping, symmetry allows us to not worry about orientation.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/2-5-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Teapot before edge splits</figcaption>
+          </td>
+          <td>
+            <img src="images/2-5-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Teapot after edge splits</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <br>
+          <td>
+            <img src="images/2-5-3.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Cow before edge splits</figcaption>
+          </td>
+          <td>
+            <img src="images/2-5-4.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Cow after edge splits and flips</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <br>
+          <td>
+            <img src="images/2-5-5.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Beetle before edge splits</figcaption>
+          </td>
+          <td>
+            <img src="images/2-5-6.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Beetle after boundary edge splits and flips</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+
+    <h3 align="middle">Part 6: Loop subdivision for mesh upsampling</h3>
+    <p>To implement loop subdivision, we followed the instructions outlined in the comments provided in the starter code.</p>
+    <p>For the first step, we iterate through the vertices in the mesh, calculated their new positions according to the provided formula, but did not update their positions yet. We also marked them as old vertices.</p>
+    <p>For the second step, we iterate through each edge and reused code from the edge flip method to grab the vertices in the triangles joined by the edge. We calculate the new position of the vertex that would be created by splitting the edge, and store that new position.</p>
+    <p>For the third step, we iterate through each edge, and if its endpoints are both old vertices, then we split it.</p>
+    <p>For the fourth step, we iterate through each edge, and if it has 1 endpoint that is old and 1 that is new, then we flip it.</p>
+    <p>For the fifth step, we iterate through each vertex, and update its position based on the calculations done in the first step.</p>
+    <br>
+    <p>When we tested our implementation, we realized that there was an error in our code because our output images had indentations in the corners where we expected smoothness. To debug the issue, we tracked vertices in the original mesh that we suspected to be the problem based on their location by their address. When doing so, we discovered that the degree shown in the GUI was larger than its actual degree, implying that there was a problem with our halfedge manipulation. Because new halfedges are only created when splitting edges, we tried to replicate the issue using only edge splits. After confirming that edge splitting was causing the issue, we were able to figure out the problem and resolve it.</p>
+    <br>
+    <p>Loop subdivision causes sharp corners and edges to be smoothed out.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/cube-0.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae before loop subdivision</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <br>
+          <td>
+            <img src="images/cube-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae after 1 subdivision</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae after 2 subdivisions</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <br>
+          <td>
+            <img src="images/cube-3.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae after 3 subdivisions</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-4.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae after 4 subdivisionss</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <p>To preserve sharp corners, we split each incident edge of the vertex multiple times until the vertex's adjacent vertices are very close to it. However, to make the effect uniform on the incident edges, we iterate through each incident edge and split, so that no edge is split more than once in a row.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/cube-corner-0.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Pre-splitting cube.dae to preserve sharp corners</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-corner-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Pre-split cube.dae after loop subdivison</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <p>To preserve sharp edges, we split the edge. Then we split the 2 new edges mulitple times until the new vertices are very close to the midpoint of the edge.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/cube-edge-0.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Pre-splitting cube.dae to preserve sharp edges</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-edge-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Pre-split cube.dae after loop subdivison</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <p>To preserve both sharp edges and corners, we combine these processes.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/cube-edge-corner.JPG" align="middle" width="400px" />
+            <figcaption align="middle">cube.dae with preserved edges and corners</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+    <p>To make the subdivided cube symmetric, we split the diagonal edges of each face so that the entire cube is symmetric. Because the loop subdivision process is itself symmetric, then making the original mesh symmetric results in a symmetric output after subdivision.</p>
+    <div align="middle">
+      <table style="width=100%">
+        <tr>
+          <td>
+            <img src="images/cube-sym-0.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Pre-processing cube.dae for symmetry</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-sym-1.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Symmetric cube.dae after 1 subdivison</figcaption>
+          </td>
+        </tr>
+        <tr>
+          <br>
+          <td>
+            <img src="images/cube-sym-2.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Symmetric cube.dae after 2 subdivisons</figcaption>
+          </td>
+          <td>
+            <img src="images/cube-sym-3.JPG" align="middle" width="400px" />
+            <figcaption align="middle">Symmetric cube.dae after 3 subdivisons</figcaption>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+
+    Link to website: <a href="https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj2/index.html">https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj2/index.html</a>   
+</body>
+
 </html>
