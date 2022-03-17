@@ -1,7 +1,260 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-1 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Joshua Chen, Marcus Lee  |  CS 184-g00nz3</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Joshua Chen, Marcus Lee  |  CS 184-g00nz3</h2>
+
+    <div class="padded">
+        <p>In this project, we implemented ray tracing to render images with diffuse BSDFs. We implemented ray-scene intersection tests as well as bounding volume hierarchies to speed up these intersection tests. To actually render images with lighting, we used Monte Carlo integration with importance sampling over lights, Russian Roulette for continuation of evaluating indirect illumination, and adaptive sampling for each pixel.</p>
+        <p>For each part, we reviewed the lecture slides and any provided code to figure out what algorithms to implement and how to implement them.</p>
+        <p>We encountered problems with parts of the scene being too dark or too bright, which we solved by thinking about what was different between those parts of the scene and the other parts which rendered correctly.</p>
+        <p>We encountered other problems, such as images being too noisy, which we solved by double-checking our formulas and trial-and-error with different fixes.</p>
+
+    <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
+        <p>To generate a ray, we scale and translate image space coordinates to get to camera space. We then apply the camera-to-world rotation matrix to go from camera space to world space. We also set the origin of the ray to be the camera's position in world space.</p>
+
+        <p>To generate pixel samples, we take uniformly random points within each pixel, generate rays to those points, and average the estimated scene radiances along each ray.</p>
+
+        <p>For ray-triangle intersection, we use the Möller Trumbore algorithm, and check that the returned values are within the correct bounds. If there is an intersection, we set the ray's max_t value to be the t value of the intersection, so that in future iterations, we do not need to do need to check for things that are further away.</p>
+
+        <p>For ray-sphere intersection, we implement the formula provided in the lecture slides. We check the discriminant of the quadratic formula, and if it is negative, then there are no intersections. Otherwise, we take the smallest t value out of the 2 quadratic roots that are within the bounds for t as the t value of the intersection. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBcoil.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/CBgems.png" width="480px" />
+                    <figcaption align="middle">CBgems.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_unlit.png" width="480px" />
+                    <figcaption align="middle">bunny_unlit.dae</figcaption>
+                </tr>
+            </table>
+        </div>
+
+
+    <h2 align="middle">Part 2: Bounding Volume Hierarchy</h2>
+        <p>To create a node, we create a bounding box that contains all elements in the node. If the node has no more than max_leaf_size elements, then we return it as a leaf node. Otherwise, we split along the midpoint of the axis with the largest extent. Then for each element associated with the node, we assign it to either the left or right node based on which side of the split it falls on. Then we recursively call our algorithm on the left and right nodes.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBlucy.png" width="480px" />
+                    <figcaption align="middle">CBlucy.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/blob.png" width="480px" />
+                    <figcaption align="middle">blob.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/wall-e.png" width="480px" />
+                    <figcaption align="middle">wall-e.dae</figcaption>
+                </tr>
+            </table>
+        </div>
+        <p>To render beast.dae, the unoptimized code took 71.4066s, traced 380583 rays, and averaged 12622.685966 intersection tests per ray. The faster code took 0.0371s (~1924x speedup), traced 191411 rays (~2x less), and averaged 3.063126 (~4123x less) intersection tests per ray. beast.dae has 64618 primitives, and 64618 / log(64618) is roughly 4043, which is roughly the same speedup of intersection tests performed per ray that we achieved.</p>
+        <p>To render bench.dae, the unoptimized code took 23.8870s, traced 324221 rays, and averaged 4761.857064 intersection tests per ray. The faster code took 0.0240s (~995x speedup), traced 150256 rays (~2x less), and averaged 1.159721 (~4105x less) intersection tests per ray. bench.dae has 67808 primitives, and 67808 / log(67808) is roughly 4225, which is roughly the same speedup of intersection tests performed per ray that we achieved.</p>
+        <p>To render CBdragon.dae, the unoptimized code took 87.9689s, traced 374490 rays, and averaged 10129.777917 intersection tests per ray. The faster code took 0.0388s (~2268x speedup), traced 189198 rays (~2x less), and averaged 2.840305 (~3566x less) intersection tests per ray. CBdragon.dae has 100012 primitives, and 100012 / log(100012) is roughly 6250, which is roughly the same order of magnitude as our speedup of intersection tests performed per ray.</p>
+
+
+        <h2 align="middle">Part 3: Direct Illumination</h2>
+            <h3 align="middle">Uniform Hemisphere Sampling</h2>
+                <p>First, we find the point that the camera ray hits the object at, and we trace a ray from that point back to the camera in object-space.</p>
+                <p>Then we generate a uniformly random unit-vector direction on the hemisphere and get the BSDF of the object with that incoming direction and outgoing direction to the camera. Then we trace a ray going from the hit point on the object in the direction of the randomly generated unit-vector direction on the hemisphere (in world-space), and if the ray intersects an object, we get that object's emission and plug it into the Monte Carlo estimate of the reflection equation. We do this multiple times to reduce noise.</p>
+
+            <h3 align="middle">Importance Sampling</h2>
+                <p>Like with uniform hemisphere sampling, we first find the point that the camera ray hits the object at, and we trace a ray from that point back to the camera in object-space.</p>
+                <p>For each light in the scene, if it is a point light, then we perform the following operation only once. Otherwise, we perform it a certain number of times. </p>
+                <p>We get a vector from the hit point on the object towards a random point on the light (note, if this is a point light, then there is only 1 possible point on the light). Then if the light is in front of the object (i.e., the dot product of the normal vector of the object with the random direction vector generated is positive), then we trace a ray from the hit point in that direction, and if the ray hits anything before the light, then it is a shadow ray and we ignore it. Otherwise, we include the light's radiance at the random point in the Monte Carlo estimate of the reflection equation.</p>
+            
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                        <img src="images/CBbunny_H.png" width="480px" />
+                        <figcaption align="middle">CBbunny.dae, hemisphere sampling</figcaption>
+                        <td align="middle">
+                        <img src="images/CBbunny.png" width="480px" />
+                        <figcaption align="middle">CBbunny.dae, importance sampling</figcaption>
+                    </tr>
+                    <br>
+                    <tr>
+                        <td align="middle">
+                        <img src="images/CBspheres_lambertian_H.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, hemisphere sampling</figcaption>
+                        <td align="middle">
+                        <img src="images/CBspheres_lambertian.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, importance sampling</figcaption>
+                    </tr>
+                    <br>
+                    <tr>
+                        <td align="middle">
+                        <img src="images/blob_H.png" width="480px" />
+                        <figcaption align="middle">blob.dae, hemisphere sampling</figcaption>
+                        <td align="middle">
+                        <img src="images/blob.png" width="480px" />
+                        <figcaption align="middle">blob.dae, importance sampling</figcaption>
+                    </tr>
+                </table>
+            </div>
+
+            <div align="center">
+                <table style="width=100%">
+                    <tr>
+                        <td align="middle">
+                        <img src="images/CBspheres_1.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, 1 light ray</figcaption>
+                        <td align="middle">
+                        <img src="images/CBspheres_4.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, 4 light rays</figcaption>
+                    </tr>
+                    <br>
+                    <tr>
+                        <td align="middle">
+                        <img src="images/CBspheres_16.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, 16 light rays</figcaption>
+                        <td align="middle">
+                        <img src="images/CBspheres_64.png" width="480px" />
+                        <figcaption align="middle">CBspheres_lambertian.dae, 64 light rays</figcaption>
+                    </tr>
+                </table>
+            </div>
+            <p>As the number of light rays increases, the noise level decreases and the soft shadows become smoother.</p>
+            
+            <p>Uniform hemisphere sampling has a lot more noise than lighting sampling. It also cannot handle point lights because the probability of a random ray hitting the point light is practically zero. Lighting sampling also converges to the correct result faster than uniform hemisphere sampling.</p>
+
+        <h2 align="middle">Part 4: Global Illumination</h2>
+        <p>To calculate at least once bounce radiance, when a ray hits an object, we check the ray's depth.</p>
+        <p>If the ray has depth 0, then we return a zero vector.</p>
+        <p>If the ray has depth 1, then we return the one bounce radiance.</p>
+        <p>Otherwise, if the ray's depth is equal to the maximum possible ray depth or if the coin flip with probability 0.7 returns true, then we trace a new ray from the hit point on the object towards a random direction on the hemisphere. We set the new ray's minimum t to be some small epsilon, and we set its depth to be the current ray's depth minus 1. Then we check if the ray intersects the scene, and if so, we recursively call the at_least_one_bounce_radiance function with the new ray and hit point. We then get that result, multiply it by the reflectance at the current hit point, multiply it by the cosine of the normal at the current hit point with the direction of the new ray, and divide by the pdf of the new ray. We then return the sum of that result with the one bounce radiance.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/blob_global.png" width="480px" />
+                    <figcaption align="middle">blob.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/wall-e_global.png" width="480px" />
+                    <figcaption align="middle">wall-e.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/spheres.png" width="480px" />
+                    <figcaption align="middle">CBspheres_lambertian.dae</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/spheres_direct.png" width="480px" />
+                    <figcaption align="middle">CBspheres_lambertian.dae, direct lighting only</figcaption>
+                    <td align="middle">
+                    <img src="images/spheres_indirect.png" width="480px" />
+                    <figcaption align="middle">CBspheres_lambertian.dae, indirect lighting only</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/bunny_m_0.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, max ray depth 0</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_m_1.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, max ray depth 1</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_m_2.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, max ray depth 2</figcaption>
+                </tr>
+                <tr>
+                    <td align="middle">
+                    <img src="images/bunny_m_3.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, max ray depth 3</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_m_100.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, max ray depth 100</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/bunny_s_1.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 1 sample per pixel</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_s_2.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 2 samples per pixel</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_s_4.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 4 samples per pixel</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/bunny_s_8.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 8 samples per pixel</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_s_16.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 16 samples per pixel</figcaption>
+                    <td align="middle">
+                    <img src="images/bunny_s_64.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 64 samples per pixel</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/bunny_s_1024.png" width="480px" />
+                    <figcaption align="middle">CBbunny.dae, 1024 samples per pixel</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <h2 align="middle">Part 5: Adaptive Sampling</h2>
+        <p>We first initialize s1, s2, mu, and variance to 0, and I to infinity.</p>
+        <p>While I is greater than maxTolerance times mu and the number of samples traced so far is less than the maximum number of samples, we evaluate a batch of samples.</p>
+        <p>As we evaluate samples, we add each sample's illuminance to s1 and the squared illuminance to s2.</p>
+        <p>After we finish evaluating each batch of samples, we calculate mu and variance with the provided formulas, where n is the number of samples evaluated so far.</p>
+        <p>We then use the updated values of mu and variance to calculate I with the provided formula, and use the new values of I and mu to check whether to evaluate another batch of samples.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/spheres_adaptive.png" width="480px" />
+                    <figcaption align="middle">CBspheres_lambertian.dae</figcaption>
+                    <td align="middle">
+                    <img src="images/spheres_adaptive_rate.png" width="480px" />
+                    <figcaption align="middle">CBspheres_lambertian.dae, sample rate image</figcaption>
+                </tr>
+            </table>
+        </div>
+
+        <p>To collaborate on this project, we did pair-programming, along with double-checking our understanding of the algorithms, code, and requirements with each other. We discussed any debugging and implementation ideas we had with each other, and we learned how to more efficiently work together and debug code as a pair.</p>
+
+        Link to website: <a href="https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj3-1/index.html">https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj3-1/index.html</a>   
+    </div>
+</body>
 </html>
+
+
+
+
