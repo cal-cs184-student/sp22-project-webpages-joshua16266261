@@ -1,7 +1,128 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 3-2 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>Joshua Chen, Marcus Lee  |  CS 184-g00nz4</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" type="text/css" href="style.css" media="screen" />
+</head>
+<body>
+<br />
+<h1 align="middle">Assignment 3: PathTracer</h1>
+    <h2 align="middle">Joshua Chen, Marcus Lee  |  CS 184-g00nz4</h2>
+
+    <div class="padded">
+        <p>In this project, we implemented mirror and refraction materials, which allows us to render glass materials, which uses a combination of both reflection and refraction. We also implemented microfacet materials that reflect.</p>
+
+    <h2 align="middle">Part 1</h2>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBspheres0.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 0</figcaption>
+                    <td align="middle">
+                    <img src="images/CBspheres1.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 1</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBspheres2.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 2</figcaption>
+                    <td align="middle">
+                    <img src="images/CBspheres3.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 3</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBspheres4.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 4</figcaption>
+                    <td align="middle">
+                    <img src="images/CBspheres5.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 5</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/CBspheres100.png" width="480px" />
+                    <figcaption align="middle">CBspheres.dae, max_ray_depth = 100</figcaption>
+                </tr>
+            </table>
+        </div>
+        <p>With max_ray_depth = 0, we only get the light that directly comes from the light source.</p>
+        <p>With max_ray_depth = 1, we can also see the walls and the reflection of the light source on the balls because the rays have not had the chance to bounce between the walls and the balls or between the balls.</p>
+        <p>With max_ray_depth = 2, we can see reflections, the ceiling, and some color bleeding. However, we cannot see any refractions because the rays are trapped inside the ball.</p>
+        <p>With max_ray_depth = 3, we can see the glass ball refracting, but the reflection of the glass ball on the mirror ball still appears black because the rays traveling from the glass ball to the mirror ball have not had the chance to reflect towards the camera.</p>
+        <p>With max_ray_depth = 4, we can see the reflection of the glass ball on the mirror ball, but the bottom parts of the mirror ball that are bright do not show up in the reflection on the glass ball. We can also see a bright spot on the right wall, a bright spot at the bottom of the glass ball, and the glass ball appears brighter. </p>
+        <p>With max_ray_depth = 5, we can see the bright spot on the bottom of the glass ball in the reflection on the mirror ball.</p>
+        <p>With max_ray_depth = 100, we can see a little more brightness spread around the reflection of the light source on the glass ball.</p>
+
+    <h2 align="middle">Part 2</h2>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-2-2-dragon_0005.png" width="480px" />
+                    <figcaption align="middle">CBdragon_microfacet_au.dae, alpha = 0.005</figcaption>
+                    <td align="middle">
+                    <img src="images/3-2-2-dragon_005.png" width="480px" />
+                    <figcaption align="middle">CBdragon_microfacet_au.dae, alpha = 0.05</figcaption>
+                </tr>
+                <br>
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-2-2-dragon_025.png" width="480px" />
+                    <figcaption align="middle">CBdragon_microfacet_au.dae, alpha = 0.25</figcaption>
+                    <td align="middle">
+                    <img src="images/3-2-2-dragon_05.png" width="480px" />
+                    <figcaption align="middle">CBdragon_microfacet_au.dae, alpha = 0.5</figcaption>
+                </tr>
+            </table>
+        </div>
+        <p>As alpha gets smaller, the material becomes shinier. This results in smaller bright spots on the dragon and more dark spots.</p>
+        <p>Also, as alpha gets smaller, the color bleeding from the walls onto the dragon is more noticeable.</p>
+        <p>Around alpha = 0.05, the image is noisiest. This is because as alpha decreases, the brightness of the reflections increases, but the region where light reflects towards is smaller. Therefore, for very small alpha (like 0.005), there are less noisy spots, but the spots are bright, and for large alpha (like 0.5), there are a lot of spots, but they are fairly dim, and around 0.05 is where there are a lot of spots and they are bright.</p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-2-2-bunny_hemisphere.png" width="480px" />
+                    <figcaption align="middle">CBbunny_microfacet_cu.dae, cosine hemisphere sampling</figcaption>
+                    <td align="middle">
+                    <img src="images/3-2-2-bunny_importance.png" width="480px" />
+                    <figcaption align="middle">CBbunny_microfacet_cu.dae, importance sampling</figcaption>
+                </tr>
+            </table>
+        </div>
+        <p>Cosine hemisphere sampling is noisier.</p>
+
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="images/3-2-2-dragon_carbon.png" width="480px" />
+                    <figcaption align="middle">CBdragon_microfacet_au.dae, eta and k for carbon</figcaption>
+                </tr>
+            </table>
+        </div>
+
+    <p>To collaborate on this project, we did pair-programming, along with double-checking our understanding of the algorithms, code, and requirements with each other. We discussed any debugging and implementation ideas we had with each other, and we learned how to more efficiently work together and debug code as a pair.</p>
+
+    Link to website: <a href="https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj3-2/index.html">https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj3-2/index.html</a>   
+    </div>
+</body>
 </html>
+
+
+
+
