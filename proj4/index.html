@@ -1,7 +1,235 @@
-<html>
-	<head>
-	</head>
-	<body>
-		Project 4 here
-	</body>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<style>  
+    div.padded {  
+      padding-top: 0px;  
+      padding-right: 100px;  
+      padding-bottom: 0.25in;  
+      padding-left: 100px;  
+    }  
+  </style> 
+<title>CS 184 Mesh Editor</title>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<link href="https://fonts.googleapis.com/css?family=Open+Sans|Source+Sans+Pro" rel="stylesheet">
+</head>
+
+
+<body>
+
+<h1 align="middle">CS 184: Computer Graphics and Imaging, Spring 2022</h1>
+<h1 align="middle">Project 4: Cloth Simulator</h1>
+<h2 align="middle">Joshua Chen, Marcus Lee, CS184-g00nz5</h2>
+
+<br><br>
+
+<div>
+
+<h2 align="middle">Overview</h2>
+<p>In this project, we implemented cloth simulation by modeling the cloth as a mass-spring system to apply structural, shearing, and bending constraints between the point masses. We applied physical constraints such as handling self-collisions and collisions with other objects. We applied Verlet integration to simulate how to cloth moves over time. We implemented a variety of GLSL shaders to render with lighting and other effects.</p>
+
+<h2 align="middle">Part I: Masses and springs</h2>
+<div align="center">
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="1.jpg" width="480px" />
+			<figcaption align="middle">scene/pinned2.json</figcaption>
+		</tr>
+		<br>
+		<tr>
+			<td align="middle">
+			<img src="1-no_shear.jpg" width="480px" />
+			<figcaption align="middle">No shearing constraints</figcaption>
+			<td align="middle">
+			<img src="1-only_shear.jpg" width="480px" />
+			<figcaption align="middle">Only shearing constraints</figcaption>
+			<td align="middle">
+			<img src="1-all.jpg" width="480px" />
+			<figcaption align="middle">All constraints</figcaption>
+		</tr>
+	</table>
+</div>
+
+<h2 align="middle">Part 2: Simulation via numerical integration</h2>
+<div align="center">
+	<p>With a low ks, the cloth has bigger ripples and is saggier. With high ks, the cloth has smaller ripples and stays more square.</p>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="2-ks_5.JPG" width="480px" />
+			<figcaption align="middle">ks = 5</figcaption>
+			<td align="middle">
+			<img src="2-ks_500000.JPG" width="480px" />
+			<figcaption align="middle">ks = 500000</figcaption>
+		</tr>
+	</table>
+
+	<p>Changing density semms to have the opposite effect of changing ks (i.e., increasing density by a factor of 10 has a similar visual effect to decreasing ks by a factor of 10).</p>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="2-density_1.JPG" width="480px" />
+			<figcaption align="middle">density = 1</figcaption>
+			<td align="middle">
+			<img src="2-density_1500.JPG" width="480px" />
+			<figcaption align="middle">density = 1500</figcaption>
+		</tr>
+	</table>
+
+	<p>Increasing damping slows down the fall of the cloth and reduces oscillations, whereas decreasing damping results in the cloth falling faster and oscillating more.</p>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="2-damping_0.JPG" width="480px" />
+			<figcaption align="middle">damping = 0</figcaption>
+			<td align="middle">
+			<img src="2-damping_100.JPG" width="480px" />
+			<figcaption align="middle">damping = 1000</figcaption>
+		</tr>
+	</table>
+
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="2-4.JPG" width="480px" />
+			<figcaption align="middle">scene/pinned4.json in resting state</figcaption>
+		</tr>
+	</table>
+</div>
+
+<h2 align="middle">Part 3: Handling collisions with other objects</h2>
+<div align="center">
+	<p>With a low ks, the cloth has more folds and is more droopy. The opposite occurs with a high ks.</p>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="3-sphere_ks_500.JPG" width="480px" />
+			<figcaption align="middle">ks = 500</figcaption>
+			<td align="middle">
+			<img src="3-sphere-ks_5000.JPG" width="480px" />
+			<figcaption align="middle">ks = 5000</figcaption>
+			<td align="middle">
+			<img src="3-sphere_ks_50000.JPG" width="480px" />
+			<figcaption align="middle">ks = 50000</figcaption>
+		</tr>
+	</table>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="3-plane.JPG" width="480px" />
+			<figcaption align="middle">Cloth on plane at rest</figcaption>
+		</tr>
+	</table>
+
+<h2 align="middle">Part 4: Handling self-collisions</h2>
+<table style="width=100%">
+	<tr>
+		<td align="middle">
+		<img src="4-early.JPG" width="480px" />
+		<figcaption align="middle">Early</figcaption>
+		<td align="middle">
+		<img src="4-initial.JPG" width="480px" />
+		<figcaption align="middle">Initial self-collision</figcaption>
+		<td align="middle">
+		<img src="4-ending.JPG" width="480px" />
+		<figcaption align="middle">Restful state</figcaption>
+	</tr>
+</table>
+<p>A lower density causes the cloth to be more flat when it falls, and a higher density causes the cloth to clump up more.</p>
+<table style="width=100%">
+	<tr>
+		<td align="middle">
+		<img src="4-d_1.5.JPG" width="480px" />
+		<figcaption align="middle">density = 1.5</figcaption>
+		<td align="middle">
+		<img src="4-d_1500.JPG" width="480px" />
+		<figcaption align="middle">density = 1500</figcaption>
+	</tr>
+</table>
+<p>A higher ks causes the cloth to be more flat when it falls, and a lower ks causes the cloth to clump up more.</p>
+<table style="width=100%">
+	<tr>
+		<td align="middle">
+		<img src="4-k_500.JPG" width="480px" />
+		<figcaption align="middle">ks = 500</figcaption>
+		<td align="middle">
+		<img src="4-k_50000.JPG" width="480px" />
+		<figcaption align="middle">ks = 50000</figcaption>
+	</tr>
+</table>
+
+<h2 align="middle">Part 5: Shaders</h2>
+<p>A shader program is a program that runs on the GPU to perform parts of the graphics pipeline. Vertex shaders transform the mesh by modifying vertex attributes, such as position, normal, tangent, etc. Fragment shaders then take these transformed attributes and calculate a color for the vertices.</p>
+
+<h3 align="middle">Blinn-Phong</h2>
+<p>Blinn-Phong has 3 components to it. The ambient lighting component is some scalar times the ambient light intensity and is equal at all points. The diffuse lighting component approximates the light from a point light source, but does not depend on the viewing direction. The specular lighting component creates specular highlights where the normal of the object is pointing close to the same direction as the camera.</p>
+<table style="width=100%">
+	<tr>
+		<td align="middle">
+		<img src="5-phong_amb_0.5.JPG" width="480px" />
+		<figcaption align="middle">Ambient only, ka = 0.5, Ia = 1</figcaption>
+		<td align="middle">
+		<img src="5-phong_dif_0.9.JPG" width="480px" />
+		<figcaption align="middle">Diffuse only, kd = 0.9</figcaption>
+	</tr>
+	<br>
+	<tr>
+		<td align="middle">
+		<img src="5-phong_spec_0.9.JPG" width="480px" />
+		<figcaption align="middle">Specular only, ks = 0.9, p = 69</figcaption>
+		<td align="middle">
+		<img src="5-phong_all.JPG" width="480px" />
+		<figcaption align="middle">All components, ka = 0.1, Ia = 1, kd = 0.9, ks = 0.9, p = 69</figcaption>
+	</tr>
+</table>
+
+<h3 align="middle">Texture Mapping</h2>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="5-tex_before.JPG" width="480px" />
+			<figcaption align="middle">Before falling</figcaption>
+			<td align="middle">
+			<img src="5-tex_after.JPG" width="480px" />
+			<figcaption align="middle">After falling</figcaption>
+		</tr>
+	</table>
+
+<h3 align="middle">Bump and Displacement Mapping</h2>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="5-bump_cloth.JPG" width="480px" />
+			<figcaption align="middle">Bump mapping on cloth</figcaption>
+			<td align="middle">
+			<img src="5-bump_sphere.JPG" width="480px" />
+			<figcaption align="middle">Bump mapping on sphere</figcaption>
+		</tr>
+	</table>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="5-disp.JPG" width="480px" />
+			<figcaption align="middle">Displacement mapping on sphere</figcaption>
+		</tr>
+	</table>
+	<p>Bump mapping does not actually change the positions of any vertices, only the normals. This results in the output still looking like a sphere overall.</p>
+	<p>Displacement mapping changes the positions of the vertices, which results in the output not looking like a sphere anymore, but instead it looks fairly deformed.</p>
+	<p>Changing the mesh coarseness had no visible effect on either of the shaders.</p>
+	
+<h3 align="middle">Mirror</h2>
+	<table style="width=100%">
+		<tr>
+			<td align="middle">
+			<img src="5-mirror_cloth.JPG" width="480px" />
+			<figcaption align="middle">Mirror, cloth</figcaption>
+			<td align="middle">
+			<img src="5-mirror_sphere.JPG" width="480px" />
+			<figcaption align="middle">Mirror, sphere</figcaption>
+		</tr>
+	</table>
+
+	Link to website: <a href="https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj4/index.html">https://cal-cs184-student.github.io/sp22-project-webpages-joshua16266261/proj4/index.html</a>   
+</body>
 </html>
